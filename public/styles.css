@@ -1,0 +1,948 @@
+:root {
+  --bg-deep: hsl(204, 35%, 7%);
+  --surface-hud: hsla(205, 30%, 9%, 0.82);
+  --surface-hud-elevated: hsla(204, 28%, 13%, 0.88);
+  --surface-subtle: hsla(200, 20%, 96%, 0.06);
+  --border-hairline: hsla(195, 25%, 88%, 0.16);
+  --border-active: hsla(38, 95%, 56%, 0.65);
+
+  --text-primary: hsl(42, 28%, 96%);
+  --text-secondary: hsl(202, 16%, 74%);
+  --text-muted: hsl(202, 12%, 54%);
+
+  --accent-amber: hsl(38, 95%, 56%);
+  --accent-amber-soft: hsla(38, 95%, 56%, 0.16);
+  --accent-emerald: hsl(156, 72%, 46%);
+  --accent-emerald-soft: hsla(156, 72%, 46%, 0.16);
+
+  --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --ease-drone: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* =========================================================
+   DRONE CAMERA VIEWPORT & GIMBAL RIG
+   ========================================================= */
+.drone-viewport {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  perspective: 1400px;
+  background: #071016;
+}
+
+.drone-hover-rig {
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+
+.drone-camera {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  transition: transform 1.25s var(--ease-drone), filter 0.9s ease;
+  will-change: transform, filter;
+}
+
+.drone-camera.is-flying {
+  filter: contrast(1.05) saturate(1.08);
+}
+
+.world-canvas {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+}
+
+.world-map-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  filter: contrast(1.04) brightness(0.92);
+  pointer-events: none;
+}
+
+/* Subtle natural vignette & optical exposure grade */
+.world-grade-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 42%, rgba(5, 12, 18, 0.58) 100%),
+    linear-gradient(180deg, rgba(6, 13, 19, 0.48) 0%, transparent 18%, transparent 82%, rgba(6, 13, 19, 0.65) 100%);
+  pointer-events: none;
+}
+
+/* =========================================================
+   ANIMATED WORLD DETAILS (TURBINES, FLIGHT PATH, CLOUDS)
+   ========================================================= */
+.flight-vector-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.flight-path-line {
+  fill: none;
+  stroke: hsla(38, 95%, 56%, 0.42);
+  stroke-width: 0.16;
+  stroke-dasharray: 0.9 0.7;
+  animation: dashFlow 18s linear infinite;
+}
+
+.flight-path-glow {
+  fill: none;
+  stroke: hsla(38, 95%, 56%, 0.14);
+  stroke-width: 0.55;
+}
+
+.survey-ring {
+  fill: none;
+  stroke: hsla(42, 28%, 96%, 0.25);
+  stroke-width: 0.12;
+  stroke-dasharray: 0.5 0.5;
+  transform-origin: center;
+}
+
+@keyframes dashFlow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+/* Cloud Mist Layer for Altitude Depth */
+.cloud-layer {
+  position: absolute;
+  inset: -20%;
+  width: 140%;
+  height: 140%;
+  pointer-events: none;
+  z-index: 3;
+  background-image:
+    radial-gradient(ellipse 28% 16% at 24% 32%, rgba(255, 255, 255, 0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 18% at 68% 24%, rgba(255, 255, 255, 0.10) 0%, transparent 72%),
+    radial-gradient(ellipse 32% 20% at 54% 72%, rgba(255, 255, 255, 0.11) 0%, transparent 70%),
+    radial-gradient(ellipse 24% 14% at 84% 58%, rgba(255, 255, 255, 0.09) 0%, transparent 68%);
+  animation: cloudDrift 42s ease-in-out infinite alternate;
+  transition: opacity 1s ease;
+}
+
+.drone-camera.is-zoomed .cloud-layer {
+  opacity: 0.35;
+}
+
+@keyframes cloudDrift {
+  0% {
+    transform: translate3d(-3%, -2%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(3.5%, 2.5%, 0) scale(1.06);
+  }
+}
+
+/* =========================================================
+   INTERACTIVE GROUND TARGET PINS ON THE LANDSCAPE
+   ========================================================= */
+.ground-targets {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.ground-pin {
+  position: absolute;
+  left: var(--pin-x);
+  top: var(--pin-y);
+  transform: translate(-50%, -50%);
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  transition: transform 0.45s var(--ease-drone), opacity 0.45s ease;
+}
+
+.ground-pin:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* Scale down pins inversely when camera is zoomed in so they stay crisp */
+.drone-camera.is-zoomed .ground-pin {
+  transform: translate(-50%, -50%) scale(0.46);
+}
+
+.drone-camera.is-zoomed .ground-pin:not(.is-active) {
+  opacity: 0.4;
+}
+
+.pin-reticle {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-ring-outer {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--accent-amber);
+  border-radius: 50%;
+  opacity: 0.85;
+  animation: pulseRing 2.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.pin-brackets {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid hsla(42, 28%, 96%, 0.78);
+  border-radius: 4px;
+  transition: transform 0.35s var(--ease-drone), border-color 0.35s ease;
+}
+
+.ground-pin:hover .pin-brackets,
+.ground-pin.is-active .pin-brackets {
+  transform: rotate(45deg) scale(1.08);
+  border-color: var(--accent-amber);
+}
+
+.pin-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  box-shadow: 0 0 12px var(--accent-amber);
+}
+
+.pin-tag {
+  background: var(--surface-hud);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 7px 12px;
+  text-align: left;
+  min-width: 148px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.ground-pin:hover .pin-tag,
+.ground-pin.is-active .pin-tag {
+  border-color: var(--border-active);
+  background: var(--surface-hud-elevated);
+}
+
+.pin-code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.pin-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.pin-coords {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+/* =========================================================
+   DRONE VIEWFINDER HUD OVERLAY
+   ========================================================= */
+.hud-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 26px;
+}
+
+/* Viewfinder Optical Corner Brackets */
+.hud-corner {
+  position: fixed;
+  width: 26px;
+  height: 26px;
+  border-color: hsla(42, 28%, 96%, 0.32);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 19;
+}
+.hud-corner.tl { top: 14px; left: 14px; border-width: 1.5px 0 0 1.5px; }
+.hud-corner.tr { top: 14px; right: 14px; border-width: 1.5px 1.5px 0 0; }
+.hud-corner.bl { bottom: 14px; left: 14px; border-width: 0 0 1.5px 1.5px; }
+.hud-corner.br { bottom: 14px; right: 14px; border-width: 0 1.5px 1.5px 0; }
+
+/* Center Optical Crosshair */
+.hud-center-reticle {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 15;
+  opacity: 0.45;
+  transition: transform 0.6s var(--ease-drone), opacity 0.4s ease;
+}
+
+.hud-center-reticle.is-locked {
+  transform: translate(-50%, -50%) scale(0.78);
+  opacity: 0.75;
+}
+
+.hud-center-reticle svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Top Bar */
+.hud-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.brand-module {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface-hud);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: border-color 0.25s ease;
+}
+
+.brand-module:hover {
+  border-color: hsla(42, 28%, 96%, 0.35);
+}
+
+.rec-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-emerald);
+  letter-spacing: 0.08em;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  box-shadow: 0 0 10px var(--accent-emerald);
+  animation: recBlink 2s ease-in-out infinite;
+}
+
+@keyframes recBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.brand-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-hairline);
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.brand-subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Waypoint Navigation Pill Bar */
+.hud-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-hud);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.hud-nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hud-nav-btn .nav-index {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.hud-nav-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+}
+
+.hud-nav-btn.is-active {
+  color: var(--bg-deep);
+  background: var(--accent-amber);
+  font-weight: 600;
+}
+
+.hud-nav-btn.is-active .nav-index {
+  color: hsla(204, 35%, 7%, 0.75);
+}
+
+/* Right Telemetry Readout */
+.telemetry-module {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface-hud);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-family: var(--font-mono);
+}
+
+.telemetry-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.telemetry-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.telemetry-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-value.accent {
+  color: var(--accent-amber);
+}
+
+/* =========================================================
+   STAGE CONTENT CARDS (OVERVIEW, ABOUT, SERVICES, CONTACT)
+   ========================================================= */
+.stage-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+  padding: 20px 0;
+}
+
+.stage-panel {
+  position: absolute;
+  left: 0;
+  max-width: 510px;
+  width: 100%;
+  background: var(--surface-hud);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+  padding: 28px 30px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(18px) scale(0.98);
+  pointer-events: none;
+  transition:
+    opacity 0.55s var(--ease-drone),
+    transform 0.55s var(--ease-drone);
+  max-height: calc(100vh - 175px);
+  overflow-y: auto;
+}
+
+.stage-panel.is-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.panel-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  margin-bottom: 10px;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.2vw, 36px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.panel-lead {
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+/* Status bar fetched from Cloudflare D1 */
+.d1-status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-hairline);
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-bottom: 22px;
+}
+
+.d1-status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.d1-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--accent-emerald-soft);
+  color: var(--accent-emerald);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+/* Action Buttons */
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-primary {
+  background: var(--accent-amber);
+  color: var(--bg-deep);
+  border: none;
+  border-radius: 6px;
+  padding: 11px 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-secondary);
+  background: hsla(200, 20%, 96%, 0.11);
+}
+
+/* Specs Grid inside About */
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.spec-box {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-hairline);
+  border-radius: 7px;
+  padding: 12px 14px;
+}
+
+.spec-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.spec-val {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Services List */
+.services-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.service-row {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 13px 15px;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.service-row:hover {
+  border-color: hsla(38, 95%, 56%, 0.45);
+  background: hsla(200, 20%, 96%, 0.09);
+}
+
+.service-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.service-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.service-spec {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-amber);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.service-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Contact Form (Cloudflare D1 Backed) */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.field-input,
+.field-select,
+.field-textarea {
+  width: 100%;
+  background: hsla(204, 35%, 6%, 0.72);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.field-input:focus,
+.field-select:focus,
+.field-textarea:focus {
+  border-color: var(--accent-amber);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 74px;
+}
+
+.form-feedback {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  display: none;
+  margin-bottom: 12px;
+}
+
+.form-feedback.is-visible {
+  display: block;
+}
+
+.form-feedback.is-success {
+  background: var(--accent-emerald-soft);
+  border: 1px solid hsla(156, 72%, 46%, 0.45);
+  color: hsl(156, 75%, 72%);
+}
+
+.form-feedback.is-error {
+  background: hsla(0, 80%, 56%, 0.16);
+  border: 1px solid hsla(0, 80%, 56%, 0.45);
+  color: hsl(0, 85%, 78%);
+}
+
+/* =========================================================
+   BOTTOM HUD BAR
+   ========================================================= */
+.hud-bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.altitude-pill,
+.controls-hint {
+  background: var(--surface-hud);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kbd-tag {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-hairline);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--text-primary);
+}
+
+/* =========================================================
+   RESPONSIVE ADAPTATION
+   ========================================================= */
+@media (max-width: 960px) {
+  .telemetry-module {
+    display: none;
+  }
+  .hud-layer {
+    padding: 14px;
+  }
+  .stage-panel {
+    max-width: 440px;
+    padding: 22px;
+  }
+}
+
+@media (max-width: 680px) {
+  .hud-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .brand-module {
+    justify-content: space-between;
+  }
+  .hud-nav {
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+  .hud-nav-btn {
+    padding: 7px 10px;
+    font-size: 11px;
+    flex: 1;
+    justify-content: center;
+  }
+  .stage-container {
+    align-items: flex-end;
+    padding-bottom: 8px;
+  }
+  .stage-panel {
+    max-width: 100%;
+    max-height: 62vh;
+    padding: 18px;
+  }
+  .form-row-2,
+  .specs-grid {
+    grid-template-columns: 1fr;
+  }
+  .controls-hint {
+    display: none;
+  }
+  .pin-tag {
+    min-width: 112px;
+    padding: 5px 8px;
+  }
+  .pin-title {
+    font-size: 12px;
+  }
+  .pin-coords {
+    display: none;
+  }
+}

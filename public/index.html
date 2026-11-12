@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAXIO AERIAL — Commercial Drone Pilot & Aerial Services</title>
+  <meta name="description" content="Commercial EASA-certified drone pilot offering 8K aerial cinematography, thermal infrastructure inspection, and 3D photogrammetry across Denmark and Northern Europe." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- DRONE CAMERA VIEWPORT -->
+  <div id="drone-viewport" class="drone-viewport" aria-label="Interactive aerial drone view">
+    <div id="drone-hover-rig" class="drone-hover-rig">
+      <div id="drone-camera" class="drone-camera">
+        <div class="world-canvas">
+          <img
+            src="/aerial-world.jpg"
+            alt="Top-down drone view of Nordic coastal peninsula with architectural studio, wind turbine ridge, and harbor"
+            class="world-map-image"
+          />
+
+          <!-- SVG Tactical Flight Path & Survey Rings on the Terrain -->
+          <svg class="flight-vector-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <!-- Soft glow path connecting About -> Services -> Contact -> About -->
+            <path
+              class="flight-path-glow"
+              d="M 50.5 49.5 C 58 34, 64 25, 73.5 21.5 C 79 36, 82 48, 81.5 63.5 C 68 62, 57 56, 50.5 49.5 Z"
+            />
+            <!-- Dashed animated drone flight path -->
+            <path
+              class="flight-path-line"
+              d="M 50.5 49.5 C 58 34, 64 25, 73.5 21.5 C 79 36, 82 48, 81.5 63.5 C 68 62, 57 56, 50.5 49.5 Z"
+            />
+            <!-- Terrain survey perimeter rings around each waypoint -->
+            <circle class="survey-ring" cx="50.5" cy="49.5" r="4.8" />
+            <circle class="survey-ring" cx="73.5" cy="21.5" r="5.5" />
+            <circle class="survey-ring" cx="81.5" cy="63.5" r="4.8" />
+          </svg>
+
+          <!-- High-altitude drifting clouds between drone lens and terrain -->
+          <div class="cloud-layer"></div>
+          <div class="world-grade-overlay"></div>
+
+          <!-- Interactive Ground Target Markers -->
+          <div class="ground-targets">
+            <!-- Waypoint 01: ABOUT (Hillside Command Studio) -->
+            <button
+              type="button"
+              id="pin-about"
+              class="ground-pin"
+              style="--pin-x: 50.5%; --pin-y: 49.5%;"
+              data-target="about"
+              aria-label="Zoom into About Command Studio"
+            >
+              <span class="pin-reticle">
+                <span class="pin-ring-outer"></span>
+                <span class="pin-brackets"></span>
+                <span class="pin-core"></span>
+              </span>
+              <span class="pin-tag">
+                <span class="pin-code">WP-01 // 32M ASL</span>
+                <span class="pin-title">About the Pilot</span>
+                <span class="pin-coords">56.1629° N, 10.2039° E</span>
+              </span>
+            </button>
+
+            <!-- Waypoint 02: SERVICES (Wind Turbine Ridge) -->
+            <button
+              type="button"
+              id="pin-services"
+              class="ground-pin"
+              style="--pin-x: 73.5%; --pin-y: 21.5%;"
+              data-target="services"
+              aria-label="Zoom into Drone Services Sector"
+            >
+              <span class="pin-reticle">
+                <span class="pin-ring-outer"></span>
+                <span class="pin-brackets"></span>
+                <span class="pin-core"></span>
+              </span>
+              <span class="pin-tag">
+                <span class="pin-code">WP-02 // 45M ASL</span>
+                <span class="pin-title">Aerial Services</span>
+                <span class="pin-coords">56.1784° N, 10.2310° E</span>
+              </span>
+            </button>
+
+            <!-- Waypoint 03: CONTACT (Coastal Harbor Landing Zone) -->
+            <button
+              type="button"
+              id="pin-contact"
+              class="ground-pin"
+              style="--pin-x: 81.5%; --pin-y: 63.5%;"
+              data-target="contact"
+              aria-label="Zoom into Contact & Dispatch Harbor"
+            >
+              <span class="pin-reticle">
+                <span class="pin-ring-outer"></span>
+                <span class="pin-brackets"></span>
+                <span class="pin-core"></span>
+              </span>
+              <span class="pin-tag">
+                <span class="pin-code">WP-03 // 18M ASL</span>
+                <span class="pin-title">Contact &amp; Dispatch</span>
+                <span class="pin-coords">56.1492° N, 10.2418° E</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEWFINDER CORNER BRACKETS & OPTICAL LOCK RETICLE -->
+  <div class="hud-corner tl"></div>
+  <div class="hud-corner tr"></div>
+  <div class="hud-corner bl"></div>
+  <div class="hud-corner br"></div>
+
+  <div id="hud-center-reticle" class="hud-center-reticle" aria-hidden="true">
+    <svg viewBox="0 0 64 64" fill="none">
+      <path d="M20 8H8V20" stroke="#F8F5EE" stroke-width="1.5" />
+      <path d="M44 8H56V20" stroke="#F8F5EE" stroke-width="1.5" />
+      <path d="M20 56H8V44" stroke="#F8F5EE" stroke-width="1.5" />
+      <path d="M44 56H56V44" stroke="#F8F5EE" stroke-width="1.5" />
+      <circle cx="32" cy="32" r="2.5" fill="#F8A926" />
+    </svg>
+  </div>
+
+  <!-- HUD INTERFACE LAYER -->
+  <div class="hud-layer">
+    <!-- Top Navigation & Live Telemetry Bar -->
+    <header class="hud-topbar">
+      <div id="brand-home-btn" class="brand-module" role="button" tabindex="0" aria-label="Return to 120m aerial overview">
+        <div class="rec-indicator">
+          <span class="rec-dot"></span>
+          <span>LIVE 8K</span>
+        </div>
+        <div class="brand-divider"></div>
+        <div>
+          <div class="brand-title">MAXIO AERIAL</div>
+          <div class="brand-subtitle">EASA CERTIFIED DRONE OPS</div>
+        </div>
+      </div>
+
+      <nav class="hud-nav" aria-label="Drone Waypoint Navigation">
+        <button type="button" id="nav-overview" class="hud-nav-btn is-active" data-target="overview">
+          <span class="nav-index">00</span> Overview
+        </button>
+        <button type="button" id="nav-about" class="hud-nav-btn" data-target="about">
+          <span class="nav-index">01</span> About
+        </button>
+        <button type="button" id="nav-services" class="hud-nav-btn" data-target="services">
+          <span class="nav-index">02</span> Services
+        </button>
+        <button type="button" id="nav-contact" class="hud-nav-btn" data-target="contact">
+          <span class="nav-index">03</span> Contact
+        </button>
+      </nav>
+
+      <div class="telemetry-module" aria-label="Drone flight telemetry">
+        <div class="telemetry-item">
+          <span class="telemetry-label">ALTITUDE</span>
+          <span id="telemetry-alt" class="telemetry-value accent">120.0 m</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">AIRSPEED</span>
+          <span id="telemetry-spd" class="telemetry-value">0.2 m/s</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">GIMBAL</span>
+          <span id="telemetry-gimbal" class="telemetry-value">-75°</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">CLOUDFLARE D1</span>
+          <span id="telemetry-db" class="telemetry-value">SYNCING</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Stage Panels (Overview, About, Services, Contact) -->
+    <main class="stage-container">
+      <!-- 00: OVERVIEW PANEL -->
+      <section id="panel-overview" class="stage-panel is-active" aria-labelledby="title-overview">
+        <div class="panel-eyebrow">ALTITUDE 120M // SECTOR OVERVIEW</div>
+        <h1 id="title-overview" class="panel-title">Precision Aerial Perspectives from Above.</h1>
+        <p class="panel-lead">
+          Select any ground target on the landscape or initiate a guided flight tour to descend and zoom into our pilot profile, aerial capabilities, and dispatch terminal.
+        </p>
+
+        <div class="d1-status-strip" aria-live="polite">
+          <div class="d1-status-left">
+            <span class="d1-badge">D1 LIVE</span>
+            <span id="d1-status-text">Checking Cloudflare D1 flight status...</span>
+          </div>
+          <span id="d1-mission-count" style="color: var(--text-muted);">--</span>
+        </div>
+
+        <div class="panel-actions">
+          <button type="button" id="btn-start-tour" class="btn-primary" data-goto="about">
+            Zoom Into About [01] &rarr;
+          </button>
+          <button type="button" id="btn-jump-services" class="btn-secondary" data-goto="services">
+            Services [02]
+          </button>
+          <button type="button" id="btn-jump-contact" class="btn-secondary" data-goto="contact">
+            Contact [03]
+          </button>
+        </div>
+      </section>
+
+      <!-- 01: ABOUT PANEL -->
+      <section id="panel-about" class="stage-panel" aria-labelledby="title-about">
+        <div class="panel-eyebrow">WP-01 // HILLSIDE COMMAND STUDIO (32M ASL)</div>
+        <h2 id="title-about" class="panel-title">Commercial Drone Pilot &amp; Aerial Cinematographer</h2>
+        <p class="panel-lead">
+          Operating out of Denmark across Northern Europe, I combine heavy-lift cinema multirotors, agile FPV platforms, and RTK survey drones to capture perspectives impossible from the ground.
+        </p>
+
+        <div class="specs-grid">
+          <div class="spec-box">
+            <div class="spec-label">CERTIFICATION</div>
+            <div class="spec-val">EASA A1/A2/A3 &amp; STS</div>
+          </div>
+          <div class="spec-box">
+            <div class="spec-label">PRIMARY OPTICS</div>
+            <div class="spec-val">8K ProRes RAW / 4/3 CMOS</div>
+          </div>
+          <div class="spec-box">
+            <div class="spec-label">POSITIONING</div>
+            <div class="spec-val">Centimeter-Level RTK</div>
+          </div>
+          <div class="spec-box">
+            <div class="spec-label">INSURANCE</div>
+            <div class="spec-val">10M DKK Commercial Liability</div>
+          </div>
+        </div>
+
+        <div class="panel-actions">
+          <button type="button" id="btn-about-to-services" class="btn-primary" data-goto="services">
+            Fly to Services [02] &rarr;
+          </button>
+          <button type="button" id="btn-about-ascend" class="btn-secondary" data-goto="overview">
+            &uarr; Ascend to 120m
+          </button>
+        </div>
+      </section>
+
+      <!-- 02: SERVICES PANEL -->
+      <section id="panel-services" class="stage-panel" aria-labelledby="title-services">
+        <div class="panel-eyebrow">WP-02 // WIND RIDGE SECTOR (45M ASL)</div>
+        <h2 id="title-services" class="panel-title">Aerial Services &amp; Payloads</h2>
+        <p class="panel-lead">
+          Tailored flight operations for film productions, architecture firms, renewable energy, and construction engineering.
+        </p>
+
+        <div class="services-list">
+          <div class="service-row">
+            <div class="service-head">
+              <span class="service-name">Cinematic Aerials &amp; FPV</span>
+              <span class="service-spec">8K RAW / D-LOG</span>
+            </div>
+            <p class="service-desc">
+              Stabilized dual-operator cinema flights and single-take indoor/outdoor FPV flythroughs for commercials, documentaries, and brand films.
+            </p>
+          </div>
+
+          <div class="service-row">
+            <div class="service-head">
+              <span class="service-name">Wind, Solar &amp; Thermal Inspection</span>
+              <span class="service-spec">640×512 RADIOMETRIC</span>
+            </div>
+            <p class="service-desc">
+              High-zoom optical and thermal diagnostics for wind turbines, solar arrays, roofs, and coastal infrastructure with zero downtime.
+            </p>
+          </div>
+
+          <div class="service-row">
+            <div class="service-head">
+              <span class="service-name">3D Photogrammetry &amp; Mapping</span>
+              <span class="service-spec">RTK &lt; 2CM ACCURACY</span>
+            </div>
+            <p class="service-desc">
+              Georeferenced orthomosaics, digital elevation models (DEM), and 3D point clouds for architecture and land development.
+            </p>
+          </div>
+        </div>
+
+        <div class="panel-actions">
+          <button type="button" id="btn-services-to-contact" class="btn-primary" data-goto="contact">
+            Fly to Contact [03] &rarr;
+          </button>
+          <button type="button" id="btn-services-ascend" class="btn-secondary" data-goto="overview">
+            &uarr; Ascend to 120m
+          </button>
+        </div>
+      </section>
+
+      <!-- 03: CONTACT PANEL -->
+      <section id="panel-contact" class="stage-panel" aria-labelledby="title-contact">
+        <div class="panel-eyebrow">WP-03 // HARBOR LANDING ZONE (18M ASL)</div>
+        <h2 id="title-contact" class="panel-title">Request Flight Dispatch</h2>
+        <p class="panel-lead">
+          Submit your project coordinates and requirements below. All mission requests are logged directly to our Cloudflare D1 database.
+        </p>
+
+        <form id="contact-form" class="contact-form">
+          <div class="form-row-2">
+            <div class="field-group">
+              <label for="input-name" class="field-label">Your Name</label>
+              <input id="input-name" name="name" type="text" class="field-input" placeholder="Anders Lind" required />
+            </div>
+            <div class="field-group">
+              <label for="input-email" class="field-label">Email Address</label>
+              <input id="input-email" name="email" type="email" class="field-input" placeholder="pilot@client.dk" required />
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field-group">
+              <label for="input-service" class="field-label">Required Payload / Service</label>
+              <select id="input-service" name="service" class="field-select">
+                <option value="Cinematic Aerials & FPV">Cinematic Aerials &amp; FPV</option>
+                <option value="Thermal & Turbine Inspection">Thermal &amp; Turbine Inspection</option>
+                <option value="3D Photogrammetry & Mapping">3D Photogrammetry &amp; Mapping</option>
+                <option value="Real Estate & Architecture">Real Estate &amp; Architecture</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="input-location" class="field-label">Flight Location</label>
+              <input id="input-location" name="location" type="text" class="field-input" placeholder="Aarhus / Copenhagen" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="input-message" class="field-label">Mission Brief &amp; Timeline</label>
+            <textarea id="input-message" name="message" class="field-textarea" placeholder="Describe target subject, preferred dates, and deliverables..." required></textarea>
+          </div>
+
+          <div id="form-feedback" class="form-feedback" role="status" aria-live="polite"></div>
+
+          <div class="panel-actions">
+            <button type="submit" id="btn-submit-contact" class="btn-primary">
+              Transmit to Cloudflare D1 &rarr;
+            </button>
+            <button type="button" id="btn-contact-ascend" class="btn-secondary" data-goto="overview">
+              &uarr; Ascend to 120m
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <!-- Bottom HUD Bar -->
+    <footer class="hud-bottombar">
+      <div class="altitude-pill">
+        <span>TARGET LOCK: <strong id="hud-active-target" style="color: var(--text-primary);">SECTOR OVERVIEW</strong></span>
+        <span>&bull;</span>
+        <span id="hud-coords">56.1629° N, 10.2039° E</span>
+      </div>
+
+      <div class="controls-hint">
+        <span><span class="kbd-tag">CLICK</span> Ground Markers</span>
+        <span><span class="kbd-tag">SCROLL</span> or <span class="kbd-tag">1-3</span> Switch Subject</span>
+        <span><span class="kbd-tag">ESC</span> Overview (120m)</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

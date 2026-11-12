@@ -1,0 +1,16 @@
+{
+  "name": "drone-portfolio",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "maxio-sample1-db",
+      "database_id": "c216829a-cc90-46c2-9cea-f6139cb13218"
+    }
+  ]
+}
